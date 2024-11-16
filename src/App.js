@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-
+import BallThrowingPage from "./components/BallThrowingPage";
 function App() {
   const [score, setScore] = useState(0);
   const [balls, setBalls] = useState(120);  // Start with 60 balls
@@ -65,68 +65,106 @@ function App() {
     setLeaderboard(topLeaderboard);
   };
 
-  const shootBall = () => {
-    let randomOutcome = Math.random();
-    let runs = 0;
-    let newHitType = "";
-  
-    if (randomOutcome < 0.1) {
-      newHitType = "Out";
-      setWickets((prevWickets) => prevWickets - 1);
-      runs = "Out";
-      updatePlayerScore(score, true);
-    } else if (randomOutcome < 0.3) {
-      newHitType = "Miss";
-      runs = "Miss";
-    } else if (randomOutcome < 0.5) {
-      newHitType = "1";
-      runs = 1;
-    } else if (randomOutcome < 0.7) {
-      newHitType = "2";
-      runs = 2;
-    } else if (randomOutcome < 0.9) {
-      newHitType = "4";
-      runs = 4;
-      updatePlayerFoursAndSixes(4);  // Track 4 hit
-    } else {
-      newHitType = "6";
-      runs = 6;
-      updatePlayerFoursAndSixes(6);  // Track 6 hit
-    }
-  
-    setHitType(newHitType);
-    setRunsHistory((prevHistory) => [...prevHistory, runs]);
-  
-    if (typeof runs === "number") {
-      const newScore = score + runs;
-      setScore(newScore);
-      updatePlayerScore(newScore);
-    }
-  
-    setBalls((prevBalls) => prevBalls - 1);
-  
-    if ((wickets - 1 <= 0 && runs === "Out") || balls - 1 <= 0) {
-      if (wickets - 1 <= 0) {
-        alert(`Player ${currentPlayer} is out!`);
-      }
-      switchPlayer();
-    }
-  };
+  const [isChaseMode, setIsChaseMode] = useState(false); // Toggle for Chase Mode
+const [targetScore, setTargetScore] = useState(0); // Target score for Chase Mode
 
-  const updatePlayerScore = (newScore, isOut = false) => {
-    setPlayers((prevPlayers) =>
-      prevPlayers.map((player) =>
-        player.id === currentPlayer
-          ? {
-              ...player,
-              score: newScore,
-              wickets: isOut ? player.wickets - 1 : player.wickets,
-              ballsFaced: player.ballsFaced + 1,  // Track balls faced
-            }
-          : player
-      )
-    );
-  };
+// Function to toggle Chase Mode and generate a target score
+const toggleChaseMode = () => {
+  setIsChaseMode((prev) => !prev);
+  if (!isChaseMode) {
+    const randomTarget = Math.floor(Math.random() * 151) + 100; // Random target between 100 and 250
+    setTargetScore(randomTarget);
+  } else {
+    setTargetScore(0); // Reset target when Chase Mode is disabled
+  }
+};
+
+// Function to handle celebration when target is achieved
+const celebrate = () => {
+  alert(`Congratulations! You've chased down the target of ${targetScore} runs! 🎉`);
+};
+
+// Modify shootBall function to check if target is achieved
+const shootBall = () => {
+  let randomOutcome = Math.random();
+  let runs = 0;
+  let newHitType = "";
+
+  if (randomOutcome < 0.1) {
+    newHitType = "Out";
+    setWickets((prevWickets) => prevWickets - 1);
+    runs = "Out";
+    updatePlayerScore(score, true);
+  } else if (randomOutcome < 0.3) {
+    newHitType = "Miss";
+    runs = "Miss";
+  } else if (randomOutcome < 0.5) {
+    newHitType = "1";
+    runs = 1;
+  } else if (randomOutcome < 0.7) {
+    newHitType = "2";
+    runs = 2;
+  } else if (randomOutcome < 0.9) {
+    newHitType = "4";
+    runs = 4;
+    updatePlayerFoursAndSixes(4); 
+  } else {
+    newHitType = "6";
+    runs = 6;
+    updatePlayerFoursAndSixes(6); 
+  }
+
+  setHitType(newHitType);
+  setRunsHistory((prevHistory) => [...prevHistory, runs]);
+
+  if (typeof runs === "number") {
+    const newScore = score + runs;
+    setScore(newScore);
+    updatePlayerScore(newScore);
+
+    if (isChaseMode && calculateTotalScore() >= targetScore) {
+      celebrate();
+      setGameOver(true); // End the game upon achieving the target
+    }
+  }
+
+  setBalls((prevBalls) => prevBalls - 1);
+
+  if ((wickets - 1 <= 0 && runs === "Out") || balls - 1 <= 0) {
+    if (wickets - 1 <= 0) {
+      alert(`Player ${currentPlayer} is out!`);
+    }
+    switchPlayer();
+  }
+};
+
+const [milestoneMessage, setMilestoneMessage] = useState("");
+
+const updatePlayerScore = (newScore, isOut = false) => {
+  setPlayers((prevPlayers) =>
+    prevPlayers.map((player) =>
+      player.id === currentPlayer
+        ? {
+            ...player,
+            score: newScore,
+            wickets: isOut ? player.wickets - 1 : player.wickets,
+            ballsFaced: player.ballsFaced + 1,
+          }
+        : player
+    )
+  );
+
+  
+  // Celebrate milestones
+  if (newScore === 50) {
+    setMilestoneMessage(`🎉 Congratulations ${players[currentPlayer - 1].name}! You've reached a Half-Century! 🏏`);
+  } else if (newScore === 100) {
+    setMilestoneMessage(`🌟 Outstanding ${players[currentPlayer - 1].name}! You've scored a Century! 💯`);
+  } else {
+    setMilestoneMessage(""); // Clear message for other scores
+  }
+};
+
 
 
 
@@ -178,6 +216,9 @@ return (
     <div className="w-full max-w-4xl p-4 rounded-lg shadow-lg flex flex-col md:flex-row justify-between items-center">
     
     
+    {/* <div>
+      <BallThrowingPage />
+    </div> */}
     
       {/* Mode Toggle Button */}
       <button
@@ -192,7 +233,7 @@ return (
         <p className="text-lg font-semibold">Player: {players[currentPlayer - 1].name}</p>
         <p className="text-lg font-semibold">Balls Left: {balls}</p>
         <p className="text-lg font-semibold">Score: {score}</p>
-        <p className="text-lg font-semibold">Wickets Left: {wickets}</p>
+        {/* <p className="text-lg font-semibold">Wickets Left: {wickets}</p> */}
       </div>
       <button
         onClick={startGame}
@@ -201,6 +242,15 @@ return (
         Restart Game
       </button>
     </div>
+    <div className="flex flex-wrap gap-4 items-center">
+  <button
+    onClick={toggleChaseMode}
+    className="bg-green-500 px-6 py-2 rounded-full text-lg mt-4"
+  >
+    {isChaseMode ? "Disable Chase Mode" : "Enable Chase Mode"}
+  </button>
+  {isChaseMode && <p className="text-lg font-semibold">Target: {targetScore}</p>}
+</div>
 
     <h1 className="mt-10 text-6xl font-serif" >Cricket Gems</h1>
 
@@ -247,9 +297,15 @@ return (
   )}
 </div>
 
+{milestoneMessage && (
+  <div className="bg-green-500 text-white font-bold p-4 rounded-lg mt-4">
+    {milestoneMessage}
+  </div>
+)}
+
 
           {/* Runs History */}
-          <div className="mt-4 grid grid-cols-3 sm:grid-cols-12 gap-4">
+          <div className="mt-4 grid grid-cols-6 sm:grid-cols-12 gap-4">
             {runsHistory.map((run, index) => (
               <div
                 key={index}
@@ -310,6 +366,7 @@ return (
           </tbody>
         </table>
       </div>
+      
 
       <div className="mt-4 font-semibold text-lg">
         Total Score: {calculateTotalScore()} Runs
